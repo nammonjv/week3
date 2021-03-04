@@ -64,6 +64,12 @@ static void MX_ADC1_Init(void);
 /* USER CODE BEGIN PFP */
 void ADCPollingMethodInit(); //init config of 3 adc
 void ADCPollingMethodUpdate(); //readADC from 3 source
+int ADCMode = 0;
+float GetData =0;
+float ADCOutputConverted = 0;
+float Vsense = 0;
+uint32_t ButtonTimeStamp = 0;
+GPIO_PinState SwitchState[2];
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -110,6 +116,37 @@ int main(void)
 
   while (1)
   {
+	  ADCPollingMethodUpdate();
+		if(HAL_GetTick() - ButtonTimeStamp >= 100)
+			  {
+				ButtonTimeStamp = HAL_GetTick();
+			  	SwitchState[0] = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_10);
+			  	if(SwitchState[1]== GPIO_PIN_SET && SwitchState[0]== GPIO_PIN_RESET)
+			  	{//On_off
+			  		if(ADCMode == 0)
+			  		{
+			  			ADCMode = 1;
+			  		}
+			  		else
+			  		{
+			  			ADCMode = 0;
+			  		}
+			  	}
+			  	  SwitchState[1] = SwitchState[0];
+			  }
+
+		if(ADCMode == 0)
+		{
+			GetData = ADCChannel[0].Data;
+			ADCOutputConverted = 3300*GetData/4096;
+				  //3.3*(ADCChannel[0].Data/4096)
+		}
+		else
+		{
+			GetData = ADCChannel[1].Data;
+			Vsense = 3300*GetData/4096;
+			ADCOutputConverted = ((Vsense-760)/2.5)+25;
+		}
 
 
     /* USER CODE END WHILE */
@@ -286,10 +323,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-int ADCMode = 0;
-uint32_t ADCOutputConverted = 0;
-uint32_t ButtonTimeStamp = 0;
-GPIO_PinState SwitchState[2];
+
 void ADCPollingMethodInit(){
 	ADCChannel[0].Config.Channel = ADC_CHANNEL_0;
 	ADCChannel[0].Config.Rank = 1;
@@ -313,6 +347,7 @@ void ADCPollingMethodUpdate()
 		//Get Value
 		ADCChannel[i].Data = HAL_ADC_GetValue(&hadc1);
 	}
+
 
 	//Stop
 		HAL_ADC_Stop(&hadc1);
